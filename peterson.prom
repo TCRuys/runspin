@@ -1,0 +1,38 @@
+/* Peterson's algorithm [Peterson 1981] in Promela */
+
+/* runspin_deadlock: %spin -a        %gcc -o pan -DSAFETY pan.c       %./pan        % */
+/* runspin_mutex:    %spin -DLTL -a  %gcc -o pan pan.c                %./pan -a     % */
+/* runspin_progress: %spin -a        %gcc -o pan -DNP -DNOCLAIM pan.c %./pan -l -f  % */
+
+bit  q1, q2;
+byte turn;
+byte mutex;
+
+active proctype P1() {
+    do
+    ::  q1=true; 
+        turn=1;
+        !q2 || (turn == 2);
+progress:
+        mutex++;
+        /* critical section */ 
+        mutex--;
+        q1=false;
+    od;
+}
+
+active proctype P2() {
+    do
+    ::  q2=true; 
+        turn=2;
+        !q1 || (turn == 1);
+        mutex++;
+        /* critical section */ 
+        mutex--;
+        q2=false;
+    od;
+}
+
+#ifdef LTL
+ltl mutex { [] (mutex!=2) }
+#endif

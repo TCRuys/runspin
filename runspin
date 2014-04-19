@@ -1,0 +1,402 @@
+#!/bin/bash
+#
+# runspin - automatically verify Promela models
+#
+# Copyright (c) 2014 - Theo C. Ruys.
+#
+# This script is written as a support tool for the SPIN verifier.
+# All Rights Reserved. This software is for educational purposes only.
+# No guarantee whatsoever is expressed or implied by the distribution of 
+# this code. Permission is given to distribute this code provided that
+# this introductory message is not removed and no monies are exchanged.
+#
+# SPIN is developed by Gerard J. Holzmann (http://spinroot.com/).
+# This script is written by Theo C. Ruys (theo dot ruys at gmail dot com).
+#
+# DESCRIPTION
+#   Bash shell script to automatically perform the generation, 
+#   compilation and verification of a Promela model.
+#
+#   This script is loosely based on the (private) runspin script 
+#   originally described in [Ruys - PhD Thesis 2001].
+#
+# AUTHOR
+#   Theo C. Ruys
+#
+# DOCUMENTATION
+#   See runspin.1, runspin.html or runspin.pdf.
+#
+# VERSION
+#   0.9     2014.04.19  First public version.
+#
+# USAGE
+#   execute "runspin -h" to get the list of known options
+
+# == verify_promela_file() =================================================
+
+# The function verify_promela_file verifies a single Promela specification.
+# It runs spin, gcc, pan and writes the output to a file or stdout.
+# It relies on several global variables to be set during startup.
+
+function verify_promela_file() {
+
+if [ -z "$spin_cmd" ] || \
+   [ -z "$gcc_cmd" ] || \
+   [ -z "$pan_cmd" ] ; then
+    echo "$progname: could not find (all) commands for '$target'"
+    exit 1
+fi
+
+# -- check whether spin and gcc are available (and get their versions) -----
+
+spin_version=$(spin -V)
+if [ -z "$spin_version" ] ; then
+    echo "$progname: could not find 'spin'"
+    exit 1
+fi
+
+gcc_version=$(gcc -dumpversion)
+if [ -z "$gcc_version" ] ; then
+    echo "$progname: could not find 'gcc'"
+    exit 1
+fi
+
+# -- build pan verifier from $promela_file ---------------------------------
+
+if [ ! -z "$verbose" ] ; then
+    echo "$progname: building the pan verifier for '$promela_file'"
+fi
+
+if ! $spin_cmd $promela_file ; then
+    echo "$progname: syntax error in '$promela_file'"
+    exit 1
+fi
+
+if ! $gcc_cmd ; then
+    echo "$progname: error in pan.c"
+    exit 1
+fi
+
+if [ ! -z "$verbose" ] ; then
+  echo "$progname: running the pan verifier for '$promela_file'"
+fi
+
+# We either write to $output_file or to stdout (the default).
+# Perhaps we could also use bash' "exec" to redirect stdout.
+
+if [ ! -z "$output_file" ] ; then
+    results_file="$output_file"
+else
+    results_file="/dev/stdout"
+fi
+
+if [ -z "$pure_pan_report" ] ; then
+    if [ ! -z "$output_file" ] ; then
+        echo "> this report     : $results_file"             >  $results_file
+    fi
+    
+    echo "> promela file    : $promela_file"                >> $results_file
+    echo "> date            : $(date '+%d-%b-%Y %T')"       >> $results_file
+
+    if [[ "$spin_cmd" =~ spin[^j].* ]] ; then   # only for spin, not for spinja
+        echo "> spin version    : $spin_version"            >> $results_file
+    fi
+    if [[ "$gcc_cmd" =~ g?cc.* ]] ; then        # only for (g)cc, not for java
+        echo "> gcc version     : $gcc_version"             >> $results_file
+    fi
+    echo "> runspin command : $progname $runspin_options"   >> $results_file
+
+    if [ ! -z "$cfgs_file" ] ; then
+        echo "> config file     : $cfgs_file (option -f)"  >> $results_file
+    elif [ ! -z "$execute_cmds" ] ; then
+        echo "> config source   : commands specified on command line (option -x)"  >> $results_file
+    elif [ ! -z "$cmds_in_promela_file" ] ; then
+        echo "> config source   : commands retrieved from promela file (option -p)" >> $results_file
+    else
+        echo "> config source   : default commands for a safety verification run" >> $results_file
+    fi
+
+    if [ ! -z "$config_name" ] ; then
+        echo "> config name     : $config_name"   >> $results_file
+    fi
+    echo "> spin command    : $spin_cmd"          >> $results_file
+    echo "> gcc command     : $gcc_cmd"           >> $results_file
+    echo "> pan command     : $pan_cmd"           >> $results_file
+
+    # We need enclose bash's time command in a code block to redirect its stderr 
+    # information. Creating a subshell (i.e. "(time ...)") also works.
+    if ! { time $pan_cmd; } 2>> $results_file >> $results_file ; then
+        echo "$progname: could not execute $pan_cmd"
+        exit 1
+    fi
+else
+    if ! $pan_cmd > $results_file ; then
+        echo $progname: could not execute $pan_cmd
+        exit 1
+    fi
+fi
+
+if [ ! -z "$verbose" ] ; then
+    echo "$progname: verification results have been saved into '$results_file'"
+fi
+
+}
+
+# == main ==================================================================
+
+progname="runspin"
+version="0.9 -- 19 April 2014"
+
+all=
+cmds_in_promela_file=
+cfgs_file=
+pure_pan_report=
+output_file=
+config_name=
+print_version=
+verbose=
+show_usage=
+execute_cmds=
+runspin_options="$*"
+
+# Default commands: used when commands are not specified in any other way.
+# These commands correspond with a (standard) safety verification run.
+spin_cmd="spin -a"
+gcc_cmd="gcc -o pan -DSAFETY pan.c"
+pan_cmd="./pan -m10000 -c1 -w19"
+
+while [ $# -gt 0 ] && [ -z "$show_usage" ] ; do
+    case $1 in
+        -a) all=1 ;;
+        -f) cfgs_file=$2 ; shift ;;
+        -h) show_usage=1 ;;
+        -n) config_name=$2 ; shift ;;
+        -o) output_file=$2 ; shift ;;
+        -p) cmds_in_promela_file=1 ;;
+        -s) pure_pan_report=1 ;;
+        -v) print_version=1 ;;
+        -V) verbose=1 ;;
+        -x) execute_cmds=$2 ; shift ;;
+        -*) echo "$progname: unrecognized option '$1'" ; show_usage=1 ;;
+        *)  if [ ! -z "$promela_file" ] ; then
+                echo "$progname: only a single promela file can be verified" ; 
+                show_usage=1 
+            else
+                promela_file=$1 ;
+            fi ;;
+    esac
+
+    if [ $# -eq 0 ] ; then
+        echo "$progname: argument for option is missing" ;
+        show_usage=1 
+    else
+        shift
+    fi
+done
+
+if [ ! -z "$print_version" ] ; then
+    echo "$progname $version"
+    exit 0
+fi
+
+if [ -z "$promela_file" ] && [ -z "$show_usage" ] ; then
+    echo "$progname: Promela inputfile is missing" 
+    show_usage=1
+fi
+
+if [ ! -z "$show_usage" ] ; then
+    echo "$progname $version" 1>&2 ;
+    echo "usage: $progname [options] promela_file" ;
+    echo "  -a                   verify all runspin configurations in promela_file"
+    echo "  -f cfgs_file         get configuration from 'cfgs_file' " ;
+    echo "  -h                   show this message" ;
+    echo "  -n config_name       use the configuration with 'config_name'" ;
+    echo "  -o out_file          write verification report to 'out_file'" ;
+    echo "  -p                   retrieve commands from the Promela file" ;
+    echo "  -s                   no extra runspin information: pure pan report" ;
+    echo "  -v                   print version number and exit" ;
+    echo "  -V                   print verbose messages" ;
+    echo "  -x \"configuration\"   commands in configuration will be executed" ;
+    echo "By default (without -f, -p or -x), runspin performs a safety verification run:" ;
+    echo "  $spin_cmd promela_file" ;
+    echo "  $gcc_cmd" ;
+    echo "  $pan_cmd" ;
+    exit 0
+fi 
+
+if [ ! -z "$verbose" ] ; then
+    echo "$progname: checking the validity of the options for '$promela_file'" 
+fi
+
+# -- check the existence of the promela file -------------------------------
+
+if [ ! -e $promela_file ] ; then
+    echo "$progname: could not find the Promela input file '$promela_file'"
+    exit 1
+fi
+
+# -- will not write over an existing output file ---------------------------
+
+if [ ! -z "$output_file" ] && [ -e "$output_file" ] ; then
+    echo "$progname: output file '$output_file' already exists"
+    exit 1
+fi
+
+# -- check whether config_name will be used for verification ----------------
+
+if [ ! -z "$config_name" ] && [ -z "$cfgs_file" ] && [ -z "$cmds_in_promela_file" ] ; then
+    echo "$progname: config name '$config_name' will be ignored (no -f or -p option specified)"
+fi
+
+# -- check whether the all option is used -----------------------------------
+
+if [ ! -z "$all" ] ; then
+    if [ -z "$cmds_in_promela_file" ] ; then
+        echo "$progname: option -a can only used in combination with the -p option"
+        exit 1
+    fi
+    if [ ! -z "$config_name" ] ; then
+        echo "$progname: due to option -a the option -n $config_name will be ignored"
+    fi
+    if [ ! -z "$output_file" ] ; then
+        echo "$progname: due to option -a the option -o will be ignored: output goes to stdout"
+        output_file=""
+    fi
+fi
+
+# -- get commands from the COMMAND LINE ------------------------------------
+
+if [ ! -z "$execute_cmds" ] ; then
+    config_name=""
+    spin_cmd=`echo $execute_cmds | awk -F"%" '{print $2}'`
+    gcc_cmd=` echo $execute_cmds | awk -F"%" '{print $3}'`
+    pan_cmd=` echo $execute_cmds | awk -F"%" '{print $4}'`
+
+    if [ ! -z "$verbose" ] ; then
+        echo "$progname: using commands as specified on the command line"
+    fi
+
+# -- get commands from the PROMELA file ------------------------------------
+
+elif [ ! -z "$cmds_in_promela_file" ] ; then
+    if [ -z "$all" ] ; then
+
+        # single configuration to verify
+        if [ -z "$config_name" ] ; then
+            cmds_in_promela_file=`grep -i "runspin" $promela_file`
+            if [ -z "$cmds_in_promela_file" ] ; then
+                echo "$progname: could not find runspin commands in '$promela_file'"
+                exit 1
+            fi
+        else
+            cmds_in_promela_file=`grep -i "runspin_$config_name" $promela_file`
+            if [ -z "$cmds_in_promela_file" ] ; then
+                echo "$progname: could not find runspin commands for '$config_name' in '$promela_file'"
+                exit 1
+            fi
+        fi
+     
+        # only use first runspin configuration found
+        cmds_in_promela_file=`echo "$cmds_in_promela_file" | head -1`
+
+        # uses bash's regular expression to get the config name
+        config_name=`expr "$cmds_in_promela_file" : '.*runspin_\(.[a-zA-Z0-9_]*\)'`
+
+        spin_cmd=`echo "$cmds_in_promela_file" | awk -F"%" '{print $2}'`
+        gcc_cmd=` echo "$cmds_in_promela_file" | awk -F"%" '{print $3}'`
+        pan_cmd=` echo "$cmds_in_promela_file" | awk -F"%" '{print $4}'`
+
+        if [ ! -z "$verbose" ] ; then
+            echo "$progname: using commands as found in '$promela_file'"
+        fi
+
+        verify_promela_file
+
+    else
+        if [ ! -z "$verbose" ] ; then
+            echo "$progname: about to verify all configurations found in '$promela_file'"
+        fi
+
+        # verify all configurations in the promela file
+        all_cmds_in_promela_file=`grep -i "runspin" $promela_file`
+        while read -r line; do
+            cmds_in_promela_file="$line"
+            config_name=`expr "$cmds_in_promela_file" : '.*runspin_\(.[a-zA-Z0-9_]*\)'`
+
+            spin_cmd=`echo "$cmds_in_promela_file" | awk -F"%" '{print $2}'`
+            gcc_cmd=` echo "$cmds_in_promela_file" | awk -F"%" '{print $3}'`
+            pan_cmd=` echo "$cmds_in_promela_file" | awk -F"%" '{print $4}'`
+
+            if [ ! -z "$verbose" ] ; then
+                echo "$progname: verifying configuration $config_name in '$promela_file'"
+            fi
+
+            verify_promela_file
+        done <<< "$all_cmds_in_promela_file"
+        exit 1
+    fi
+
+# -- get commands from a SEPARATE configuration file -----------------------
+
+elif [ ! -z "$cfgs_file" ] ; then
+
+    if [ ! -e $cfgs_file ] ; then
+        echo "$progname: could not find file '$cfgs_file'"
+        exit 1
+    fi
+    
+    # -- set the search string ---------------------------------------------
+    
+    if [ ! -z "$config_name" ] ; then
+        target=$config_name
+    else
+        target=$promela_file
+    fi
+    search_str="\[$target\]"
+
+    # sed: remove // comments; remove empty lines; add empty line before ^[
+    sed_strip4awk="-e s/\/\/.*$//g; /^$/d; /^\[/ i\\
+\\
+"
+    # awk: record separator = empty line, field separator = new line, get search_str record
+    awk_prefix="BEGIN { RS=\"\" ; FS=\"\n\" } \
+            { if (\$1 ~ /^${search_str}/)"
+
+    # show all config names of the cfgs_file
+    # sed "$sed_strip4awk" < $cfgs_file | awk "BEGIN { RS=\"\" ; FS=\"\n\" } {print \$1}"
+
+    found=$(sed "$sed_strip4awk" < $cfgs_file | awk "$awk_prefix print \$1 }")
+
+    if [ -z "$found" ] ; then
+        echo "$progname: commands for '$target' not found in '$cfgs_file'"
+        exit 1
+    fi
+
+    # -- finally, get commands from the cfgs_file --------------------------
+
+    spin_cmd=$(sed "$sed_strip4awk" < $cfgs_file | awk "$awk_prefix print \$2 }")
+    gcc_cmd=$(sed "$sed_strip4awk" < $cfgs_file | awk "$awk_prefix print \$3 }")
+    pan_cmd=$(sed "$sed_strip4awk" < $cfgs_file | awk "$awk_prefix print \$4 }")
+
+    if [ -z "$spin_cmd" ] || [ -z "$gcc_cmd" ] || [ -z "$pan_cmd" ] ; then
+        echo "$progname: not all commands for '$target' are present in '$cfgs_file'"
+        exit 1
+    fi
+    
+    if [ ! -z "$verbose" ] ; then
+        echo "$progname: using commands for '$target' as found in '$cfgs_file'"
+    fi
+
+    verify_promela_file
+
+# -- use default commands (as set in the beginning of this script) ---------
+
+else
+    if [ ! -z "$verbose" ] ; then
+        echo "$progname: using default verification options (forced by option -d)"
+    fi
+    
+    verify_promela_file
+fi
+
+# == EOF ===================================================================

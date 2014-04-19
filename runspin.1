@@ -1,0 +1,388 @@
+.\" ---------------------------------------------------------------
+.\"   runspin.1 - documentation for runspin (started: 1 Oct 2009)
+.\" ---------------------------------------------------------------
+.\"
+.\" The macros "Of", "Ss" and "Se" are copied from man2html.1.
+.\" The macros "EX" and "EE" are copied from awk.1.
+.\"
+.\" ---------------------------------------------------------------
+.\" OPTION FLAG MACRO           .Of -x [arg]
+.de Of
+.ie \\n(.$==1      \%[\|\fB\\$1\fR\|]
+.el .if \\n(.$==2  \%[\|\fB\\$1\fR\0\fI\fI\\$2\fR\|]
+..
+.\" ---------------------------------------------------------------
+.\" SYNOPSIS START MACRO        .Ss name
+.de Ss
+.na
+.nr aA \w\\$1\\0u
+.in +\\n(aAu
+'ti -\\n(aAu
+.ta  \\n(aAu
+\&\fB\\$1\fR\t\c
+..
+.\" ---------------------------------------------------------------
+.\" SYNOPSIS END MACRO          .Se
+.de Se
+.ad
+.in
+..
+.\" ---------------------------------------------------------------
+.\" EXAMPLE MACRO               .EX
+.de EX
+.nf
+.ft CW
+..
+.\" ---------------------------------------------------------------
+.\" EXAMPLE EXPLANATION         .EE
+.de EE
+.br
+.fi
+.ft 1
+..
+.\" ---------------------------------------------------------------
+.\"
+.TH runspin 1 "19 Apr 2014" "runspin 0.9" "User Commands"
+.nh \" disable hyphenation
+.\"
+.\"------------------------------------
+.SH NAME
+\fBrunspin\fR - script to automatically verify Promela models 
+.\"
+.\"------------------------------------
+.SH SYNOPSIS
+.Ss runspin 
+.Of options...
+.I promela_file
+.Se
+.sp
+or more specifically:
+.sp
+.Ss runspin 
+.Of -a
+.Of -f cfgs_file
+.Of -h
+.Of -n config_name
+.Of -o out_file
+.Of -p
+.Of -s
+.Of -v
+.Of -V
+.Of -x \(dqconfiguration\(dq 
+.I promela_file
+.Se
+.\"
+.\"------------------------------------
+.SH DESCRIPTION
+.na
+.B runspin 
+is a bash script to automate the verification of a Promela model using 
+the model checker SPIN. 
+
+.B runspin 
+automates the complete verification of the Promela model \fIpromela_file\fR. 
+First, \fBrunspin\fR invokes 
+.I spin
+to generate the verification program pan.c. Then it invokes the 
+.I C
+compiler to compile pan.c. Finally it runs the compiled 
+.I pan
+verifier. 
+
+Apart from verifying the Promela model, \fBrunspin\fR adds valuable extra 
+information to \fIpan\fR's verification report, e.g., the Promela file 
+name, exact commands used, date of verification, unix time, etc.
+
+For each of the three phases,
+.B runspin 
+needs the necessary commands and options to execute the 
+different programs (i.e., spin, (g)cc and pan). 
+A complete set of commands and options for a single verification 
+run is called a \fIconfiguration\fR. 
+There are three ways to tell \fBrunspin\fR what configuration to use:
+.IP "\fB-f\fR \fIcfgs_file\fR" 4
+\fBrunspin\fR retrieves the configuration from \fIcfgs_file\fR
+.IP "\fB-p\fR" 4
+.br
+\fBrunspin\fR retrieves the configuration from \fIpromela_file\fR
+.IP "\fB-x\fR \(dq\fIconfiguration\fR\(dq" 4
+the configuration is specified verbatim on the command line
+.PP
+A specific configuration can be named using the option 
+\fB-n\fR \fIconfig_name\fR, where \fIconfig_name\fR is the 
+name of the configuration.
+If none of the three configuration setting options (i.e.,
+\fB-f\fR, \fB-p\fR, or \fB-x\fR) is used, \fBrunspin\fR will 
+perform a (standard) safety verification run.
+.\"
+.\"------------------------------------
+.SH OPTIONS
+.TP
+.B -a
+Verify \fBall\fR configurations in \fIpromela_file\fR.
+.br
+This option is only allowed in conjunction with the \fB-p\fR option.
+.\"
+.TP
+.BI -f\0 cfgs_file
+Get the configuration from \fIcfgs_file\fR (cfgs stands for configurations). 
+See below for the expected format of this \fIcfgs_file\fR.
+If the \fB-n\fR option is also present, \fBrunspin\fR will use 
+this name of the configuration to search for in \fIcfgs_file\fR.
+Otherwise, \fIpromela_file\fR will be used as the name of the 
+configuration in \fIcmds_file\fR.
+.\"
+.TP
+.B -h
+Print usage message.
+.TP
+.B -s
+No extra information: generate standard SPIN verification report; 
+\fBrunspin\fR will \fInot\fR add extra information regarding the verification.
+.\"
+.TP
+.B -n \fIconfig_name\fR
+Use \fIconfig_name\fR as the name for the configuration to be used.
+.br
+This option is only allowed in conjunction with the options 
+\fB-f\fR or \fB-p\fR.
+.\"
+.TP
+.B -o \fIout_file\fR
+Write the verification report to \fIout_file\fR.
+.TP
+.B -p
+Get the configuration from \fIpromela_file\fR.
+.br
+If the \fB-n\fR option is also present, \fBrunspin\fR will use 
+\fIconfig_name\fR as the name of the configuration to search for in 
+\fIpromela_file\fR.
+Otherwise, the first configuration in \fIpromela_file\fR will 
+be used for the verification.
+.\"
+.TP
+.B -v
+Print version number and exit.
+.\"
+.TP
+.B -V
+Let \fBrunspin\fR print verbose messages on what it is doing.
+.\"
+.TP
+\fB-x\fR "\fIconfiguration\fR"
+Forces \fBrunspin\fR to use the commands in \fIconfiguration\fR for 
+the verification of the Promela model.
+.br
+The double quotes " around the \fIconfiguration\fR are mandatory.
+.\"
+.\"------------------------------------
+.SH "FORMAT FOR CONFIGURATIONS"
+The complete set of commands to verify a single Promela model 
+is called a \fIconfiguration\fR. A configuration thus consists
+of a tuple of three command lines: the command line for \fIspin\fR, 
+the command line for the \fIC\fR compiler and the command line for
+the \fIpan\fR verifier.
+
+The command lines for the \fIC\fR compiler and \fIpan\fR verifier 
+have to be complete: \fBrunspin\fR will not add any parameters 
+or information to the commands.
+The command line for \fIspin\fR is treated differently: \fBrunspin\fR 
+will add the (obligatory) \fIpromela_file\fR as the last argument. 
+This means that the typical command for the first command of the 
+configuration is "spin -a". 
+As an example of a configuration, consider the following three lines,
+where each line corresponds to a separate command line.
+
+.ft CW
+.nf
+    spin -a
+    gcc -o pan -DSAFETY pan.c
+    ./pan -m10000 -c1 -w19
+.fi
+.ft 1
+.PP
+Below we explain how to format configurations for \fBrunspin\fR.
+.\"
+.IP "\fIcommand line:\fR \fB-x\fR \(dq\fIconfiguration\fR\(dq" 4
+
+The configuration can be specified on the command line using the 
+option \fB-x\fR "\fIconfiguration\fR". The string "\fIconfiguration\fR"
+specifies the three different command lines.
+Each command in the \fIconfiguration\fR string should be prefixed 
+by "\fB%\fR". Consequently, a \fIconfiguration\fR contains exactly 
+three \fB%\fR symbols.
+For example:
+
+.ft CW
+.nf
+runspin -x "%spin -a %gcc -o pan pan.c %./pan -c1" foobar.prom
+.fi
+.ft 1
+
+The configuration looks like a flattened version of the three command 
+lines, where the \fB%\fR symbol acts as the shell prompt.
+
+.IP "\fIwithin the promela file:\fR \fB-p\fR" 4
+
+Configurations can also be stored within the Promela file.
+runspin will search \fIpromela_file\fR for the first line that 
+contains the string "runspin". 
+On this line, after the string "runspin", the configuration
+should follow the same format as for the \fB-x\fR option. 
+That is, each command should be prefixed by "\fB%\fR".
+Moreover, the last command (i.e. the \fIpan\fR command) should be
+terminated with "\fB%\fR", if after the last command, the line 
+contains additional non white space characters, that are not 
+part of the command.
+For example, \fIpromela_file\fR could contain the 
+following comment:
+
+.ft CW
+.nf
+  /* runspin: %spin -a %gcc -o pan pan.c %./pan -c1 % */
+.fi
+.ft 1
+
+The double colon is not necessary, but makes the line more readable.
+The fourth "\fB%\fR" is necessary to prevent that "*/" will be
+added to the \fIpan\fR command.
+
+In addition, it is also possible to have several named configurations 
+in a Promela file. The different configurations could then be selected 
+using the \fB-t\fR option.
+To name a configuration, to the string "runspin" one should append an 
+underscore (_) and the name , e.g., "runspin_safety".
+For example, \fIpromela_file\fR could contain the following 
+comments:
+
+.ft CW
+.nf
+  /* runspin_safety: %spin -a %gcc -o pan -DSAFETY pan.c %./pan    % */
+  /* runspin_ltl:    %spin -a %gcc -o pan -DNOFAIR pan.c %./pan -a % */
+.fi
+.ft 1
+
+.IP "\fIconfigurations file:\fR \fB-f\fR \fIcfgs_file\fR" 4
+
+Configurations can also be stored in a separate file (\fIcfgs_file\fR). 
+All configurations in a \fIcfgs_file\fR have to be named. 
+A complete configuration in \fIcfgs_file\fR consists of four lines.
+The first line is the name of the configuration enclosed in square
+brackets: "[" and "]". Next, the three command lines of the 
+configuration should follow.
+.br
+It is common practice to separate configurations by empty lines, 
+but this is not necessary.
+.br
+A configuration file can have C++/Java style end-of-line comments:
+on a line, everything after "//" will be discarded.
+.br
+An example of a fragment of a \fIcfgs_file\fR is the following:
+
+.ft CW
+.nf
+  [safety]            // standard safety run
+  spin -a
+  gcc -o pan -DSAFETY -DNOCLAIM pan.c 
+  ./pan -m10000 -w19 -c1
+
+  [foobar.prom]       // configuration to verify foobar.prom
+  spin -a
+  gcc -o pan -DSAFETY -DMEMLIM=1024 pan.c
+  ./pan -m100000 -w24 -c1
+.fi
+.ft 1
+.\"
+.\"------------------------------------
+.SH EXAMPLES
+.\"
+.TP
+.EX 
+runspin foobar.prom
+.EE
+Performs a standard verification run.
+.\"
+.TP
+.EX
+runspin -p foobar.prom
+.EE
+No configuration name is provided, so \fBrunspin\fR will use the 
+first configuration in `foobar.prom' to verify the Promela model. 
+This is probably the most common way to use \fBrunspin\fR.
+.\"
+.TP
+.EX
+runspin -p -n liveness foobar.prom
+.EE
+Use the configuration named `liveness' as defined in `foobar.prom'.
+.\"
+.TP
+.EX
+runspin -f runspin.cfgs -n safety foobar.prom
+.EE
+Use the configuration named `safety' as defined in `runspin.cfgs' 
+to verify `foobar.prom'.
+.\"
+.TP
+.EX
+runspin -f runspin.cfgs -o foobar.prom.out foobar.prom
+.EE
+No configuration name is provided, so use the promela name 
+`foobar.prom' as the configuration name in `runspin.cfgs'.
+The verification report will be saved in `foobar.prom.out'.
+.\"
+.TP
+.EX
+runspin -x "%spin -a %gcc pan.c %./a.out -c1" foo.prom
+.EE
+The configuration is specified on the command line. 
+Here we do not generate the verifier "pan", so we have to
+use "a.out", the default name for gcc generated executables.
+The \fB-x\fR option is typically used from within a shell 
+script or makefile.
+.\"
+.\"------------------------------------
+.SH DEPENDENCIES
+\fBrunspin\fR relies on the presence of several (standard) 
+UNIX utilities:
+.br
+bash, spin, (g)cc, grep, sed, awk, time
+.\"
+.SH FILES
+runspin - the \fBrunspin\fR shell script
+.br
+runspin.cfgs - sample file with configurations
+.br
+.\"
+.\"------------------------------------
+.SH ADDITIONAL NOTES
+The output of \fBrunspin\fR (and SPIN) can be parsed by \fBparsepan\fR,
+a utility which has been developed hand-in-hand with \fBrunspin\fR.
+.\"
+.\"------------------------------------
+.\" .SH BUGS
+.\" Not yet known.
+.\"
+.SH "SEE ALSO"
+spin(1) -- SPIN website: http://www.spinroot.com
+.br
+parsepan(1) -- parse pan verification reports
+.\"
+.\"------------------------------------
+.SH HISTORY
+The original \fBrunspin\fR script was developed in 2000/2001. Its purpose 
+was to ease the execution of large batches of verification runs with SPIN. 
+It has been used extensively for the experiments in [Ruys 2001].
+The original version, however, was very limited in scope and functionality:
+it hardly supported the verification of a single Promela model.
+.\"
+.\"------------------------------------
+.SH VERSION
+This documentation describes the first public version \fBrunspin\fR:
+version 0.9 (19-Apr-2014).
+.\"
+.\"------------------------------------
+.SH AUTHOR
+SPIN is developed by Gerard J. Holzmann (http://spinroot.com/).
+.br
+The \fBrunspin\fR script is written by Theo Ruys (theo dot ruys at gmail dot com).

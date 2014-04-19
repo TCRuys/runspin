@@ -1,0 +1,21 @@
+// runspin.cfgs - sample configuration file
+
+[safety]            // DFS, safety, exhaustive
+spin -a
+gcc -O2 -o pan -DSAFETY -DNOCLAIM -DMEMLIM=2048 pan.c
+./pan -m10000 -c1 -w26
+
+[bitstate]          // DFS, safety, bitstate
+spin -a
+gcc -O2 -o pan -DSAFETY -DNOCLAIM -DBITSTATE -DMEMLIM=2048 pan.c
+./pan -m10000 -c1 -w32
+
+[bfs]               // BFS, safety
+spin -a
+gcc -O2 -o pan -DSAFETY -DBFS -DMEMLIM=2048 pan.c
+./pan -m1000 -c1 -w26
+
+[ltl]               // LTL
+spin -a -DLTL
+gcc -O2 -o pan -DMEMLIM=2048 pan.c
+./pan -m10000 -c1 -w26 -a

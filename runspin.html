@@ -1,0 +1,278 @@
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<head>
+  <style type="text/css"> 
+    h2 { font-size: 100% }
+  </style>
+</head>
+<body>
+
+<PRE>
+<!-- Manpage converted by man2html 3.0.1 -->
+<B>runspin(1)</B>                       User Commands                      <B>runspin(1)</B>
+
+
+
+
+</PRE>
+<H2>NAME</H2><PRE>
+       <B>runspin</B> - script to automatically verify Promela models
+
+
+</PRE>
+<H2>SYNOPSIS</H2><PRE>
+       <B>runspin</B> [<B>options...</B>] <I>promela</I><B>_</B><I>file</I>
+
+       or more specifically:
+
+       <B>runspin</B> [<B>-a</B>] [<B>-f</B> <I>cfgs</I><B>_</B><I>file</I>] [<B>-h</B>] [<B>-n</B> <I>config</I><B>_</B><I>name</I>] [<B>-o</B> <I>out</I><B>_</B><I>file</I>] [<B>-p</B>]
+               [<B>-s</B>] [<B>-v</B>] [<B>-V</B>] [<B>-x</B> <I>"configuration"</I>] <I>promela</I><B>_</B><I>file</I>
+
+
+</PRE>
+<H2>DESCRIPTION</H2><PRE>
+       <B>runspin</B> is a bash script to automate the verification of a Promela
+       model using the model checker SPIN.
+
+       <B>runspin</B> automates the complete verification of the Promela model
+       <I>promela</I><B>_</B><I>file</I>.  First, <B>runspin</B> invokes <I>spin</I> to generate the verification
+       program pan.c. Then it invokes the <I>C</I> compiler to compile pan.c. Finally
+       it runs the compiled <I>pan</I> verifier.
+
+       Apart from verifying the Promela model, <B>runspin</B> adds valuable extra
+       information to <I>pan</I>'s verification report, e.g., the Promela file name,
+       exact commands used, date of verification, unix time, etc.
+
+       For each of the three phases, <B>runspin</B> needs the necessary commands and
+       options to execute the different programs (i.e., spin, (g)cc and pan).
+       A complete set of commands and options for a single verification run is
+       called a <I>configuration</I>.  There are three ways to tell <B>runspin</B> what
+       configuration to use:
+
+       <B>-f</B> <I>cfgs</I><B>_</B><I>file</I>
+           <B>runspin</B> retrieves the configuration from <I>cfgs</I><B>_</B><I>file</I>
+
+       <B>-p</B>
+           <B>runspin</B> retrieves the configuration from <I>promela</I><B>_</B><I>file</I>
+
+       <B>-x</B> "<I>configuration</I>"
+           the configuration is specified verbatim on the command line
+
+       A specific configuration can be named using the option <B>-n</B> <I>config</I><B>_</B><I>name</I>,
+       where <I>config</I><B>_</B><I>name</I> is the name of the configuration.  If none of the
+       three configuration setting options (i.e., <B>-f</B>, <B>-p</B>, or <B>-x</B>) is used,
+       <B>runspin</B> will perform a (standard) safety verification run.
+
+
+</PRE>
+<H2>OPTIONS</H2><PRE>
+       <B>-a</B>     Verify <B>all</B> configurations in <I>promela</I><B>_</B><I>file</I>.
+              This option is only allowed in conjunction with the <B>-p</B> option.
+
+       <B>-f</B> <I>cfgs</I><B>_</B><I>file</I>
+              Get the configuration from <I>cfgs</I><B>_</B><I>file</I> (cfgs stands for
+              configurations).  See below for the expected format of this
+              <I>cfgs</I><B>_</B><I>file</I>.  If the <B>-n</B> option is also present, <B>runspin</B> will use
+              this name of the configuration to search for in <I>cfgs</I><B>_</B><I>file</I>.
+              Otherwise, <I>promela</I><B>_</B><I>file</I> will be used as the name of the
+              configuration in <I>cmds</I><B>_</B><I>file</I>.
+
+       <B>-h</B>     Print usage message.
+
+       <B>-s</B>     No extra information: generate standard SPIN verification
+              report; <B>runspin</B> will <I>not</I> add extra information regarding the
+              verification.
+
+       <B>-n</B> <I>config</I><B>_</B><I>name</I>
+              Use <I>config</I><B>_</B><I>name</I> as the name for the configuration to be used.
+              This option is only allowed in conjunction with the options <B>-f</B>
+              or <B>-p</B>.
+
+       <B>-o</B> <I>out</I><B>_</B><I>file</I>
+              Write the verification report to <I>out</I><B>_</B><I>file</I>.
+
+       <B>-p</B>     Get the configuration from <I>promela</I><B>_</B><I>file</I>.
+              If the <B>-n</B> option is also present, <B>runspin</B> will use <I>config</I><B>_</B><I>name</I>
+              as the name of the configuration to search for in <I>promela</I><B>_</B><I>file</I>.
+              Otherwise, the first configuration in <I>promela</I><B>_</B><I>file</I> will be used
+              for the verification.
+
+       <B>-v</B>     Print version number and exit.
+
+       <B>-V</B>     Let <B>runspin</B> print verbose messages on what it is doing.
+
+       <B>-x</B> "<I>configuration</I>"
+              Forces <B>runspin</B> to use the commands in <I>configuration</I> for the
+              verification of the Promela model.
+              The double quotes " around the <I>configuration</I> are mandatory.
+
+
+</PRE>
+<H2>FORMAT FOR CONFIGURATIONS</H2><PRE>
+       The complete set of commands to verify a single Promela model is called
+       a <I>configuration</I>. A configuration thus consists of a tuple of three
+       command lines: the command line for <I>spin</I>, the command line for the <I>C</I>
+       compiler and the command line for the <I>pan</I> verifier.
+
+       The command lines for the <I>C</I> compiler and <I>pan</I> verifier have to be
+       complete: <B>runspin</B> will not add any parameters or information to the
+       commands.  The command line for <I>spin</I> is treated differently: <B>runspin</B>
+       will add the (obligatory) <I>promela</I><B>_</B><I>file</I> as the last argument.  This
+       means that the typical command for the first command of the
+       configuration is "spin -a".  As an example of a configuration, consider
+       the following three lines, where each line corresponds to a separate
+       command line.
+
+           spin -a
+           gcc -o pan -DSAFETY pan.c
+           ./pan -m10000 -c1 -w19
+
+       Below we explain how to format configurations for <B>runspin</B>.
+
+       <I>command</I> <I>line:</I> <B>-x</B> "<I>configuration</I>"
+
+           The configuration can be specified on the command line using the
+           option <B>-x</B> "<I>configuration</I>". The string "<I>configuration</I>" specifies the
+           three different command lines.  Each command in the <I>configuration</I>
+           string should be prefixed by "<B>%</B>". Consequently, a <I>configuration</I>
+           contains exactly three <B>%</B> symbols.  For example:
+
+           runspin -x "%spin -a %gcc -o pan pan.c %./pan -c1" foobar.prom
+
+           The configuration looks like a flattened version of the three
+           command lines, where the <B>%</B> symbol acts as the shell prompt.
+
+
+       <I>within</I> <I>the</I> <I>promela</I> <I>file:</I> <B>-p</B>
+
+           Configurations can also be stored within the Promela file.  runspin
+           will search <I>promela</I><B>_</B><I>file</I> for the first line that contains the
+           string "runspin".  On this line, after the string "runspin", the
+           configuration should follow the same format as for the <B>-x</B> option.
+           That is, each command should be prefixed by "<B>%</B>".  Moreover, the
+           last command (i.e. the <I>pan</I> command) should be terminated with "<B>%</B>",
+           if after the last command, the line contains additional non white
+           space characters, that are not part of the command.  For example,
+           <I>promela</I><B>_</B><I>file</I> could contain the following comment:
+
+             /* runspin: %spin -a %gcc -o pan pan.c %./pan -c1 % */
+
+           The double colon is not necessary, but makes the line more
+           readable.  The fourth "<B>%</B>" is necessary to prevent that "*/" will be
+           added to the <I>pan</I> command.
+
+           In addition, it is also possible to have several named
+           configurations in a Promela file. The different configurations
+           could then be selected using the <B>-t</B> option.  To name a
+           configuration, to the string "runspin" one should append an
+           underscore (_) and the name , e.g., "runspin_safety".  For example,
+           <I>promela</I><B>_</B><I>file</I> could contain the following comments:
+
+             /* runspin_safety: %spin -a %gcc -o pan -DSAFETY pan.c %./pan    % */
+             /* runspin_ltl:    %spin -a %gcc -o pan -DNOFAIR pan.c %./pan -a % */
+
+
+       <I>configurations</I> <I>file:</I> <B>-f</B> <I>cfgs</I><B>_</B><I>file</I>
+
+           Configurations can also be stored in a separate file (<I>cfgs</I><B>_</B><I>file</I>).
+           All configurations in a <I>cfgs</I><B>_</B><I>file</I> have to be named.  A complete
+           configuration in <I>cfgs</I><B>_</B><I>file</I> consists of four lines.  The first line
+           is the name of the configuration enclosed in square brackets: "["
+           and "]". Next, the three command lines of the configuration should
+           follow.
+           It is common practice to separate configurations by empty lines,
+           but this is not necessary.
+           A configuration file can have C++/Java style end-of-line comments:
+           on a line, everything after "//" will be discarded.
+           An example of a fragment of a <I>cfgs</I><B>_</B><I>file</I> is the following:
+
+             [safety]            // standard safety run
+             spin -a
+             gcc -o pan -DSAFETY -DNOCLAIM pan.c
+             ./pan -m10000 -w19 -c1
+
+             [foobar.prom]       // configuration to verify foobar.prom
+             spin -a
+             gcc -o pan -DSAFETY -DMEMLIM=1024 pan.c
+             ./pan -m100000 -w24 -c1
+
+
+</PRE>
+<H2>EXAMPLES</H2><PRE>
+       runspin foobar.prom
+              Performs a standard verification run.
+
+       runspin -p foobar.prom
+              No configuration name is provided, so <B>runspin</B> will use the first
+              configuration in `foobar.prom' to verify the Promela model.
+              This is probably the most common way to use <B>runspin</B>.
+
+       runspin -p -n liveness foobar.prom
+              Use the configuration named `liveness' as defined in
+              `foobar.prom'.
+
+       runspin -f runspin.cfgs -n safety foobar.prom
+              Use the configuration named `safety' as defined in
+              `runspin.cfgs' to verify `foobar.prom'.
+
+       runspin -f runspin.cfgs -o foobar.prom.out foobar.prom
+              No configuration name is provided, so use the promela name
+              `foobar.prom' as the configuration name in `runspin.cfgs'.  The
+              verification report will be saved in `foobar.prom.out'.
+
+       runspin -x "%spin -a %gcc pan.c %./a.out -c1" foo.prom
+              The configuration is specified on the command line.  Here we do
+              not generate the verifier "pan", so we have to use "a.out", the
+              default name for gcc generated executables.  The <B>-x</B> option is
+              typically used from within a shell script or makefile.
+
+
+</PRE>
+<H2>DEPENDENCIES</H2><PRE>
+       <B>runspin</B> relies on the presence of several (standard) UNIX utilities:
+       bash, spin, (g)cc, grep, sed, awk, time
+
+
+</PRE>
+<H2>FILES</H2><PRE>
+       runspin - the <B>runspin</B> shell script
+       runspin.cfgs - sample file with configurations
+
+
+</PRE>
+<H2>ADDITIONAL NOTES</H2><PRE>
+       The output of <B>runspin</B> (and SPIN) can be parsed by <B>parsepan</B>, a utility
+       which has been developed hand-in-hand with <B>runspin</B>.
+
+
+</PRE>
+<H2>SEE ALSO</H2><PRE>
+       <B>spin(1)</B> -- SPIN website: http://www.spinroot.com
+       <B>parsepan(1)</B> -- parse pan verification reports
+
+
+</PRE>
+<H2>HISTORY</H2><PRE>
+       The original <B>runspin</B> script was developed in 2000/2001. Its purpose was
+       to ease the execution of large batches of verification runs with SPIN.
+       It has been used extensively for the experiments in [Ruys 2001].  The
+       original version, however, was very limited in scope and functionality:
+       it hardly supported the verification of a single Promela model.
+
+
+</PRE>
+<H2>VERSION</H2><PRE>
+       This documentation describes the first public version <B>runspin</B>: version
+       0.9 (19-Apr-2014).
+
+
+</PRE>
+<H2>AUTHOR</H2><PRE>
+       SPIN is developed by Gerard J. Holzmann (http://spinroot.com/).
+       The <B>runspin</B> script is written by Theo Ruys (theo dot ruys at gmail dot
+       com).
+
+
+
+runspin 0.9                       19 Apr 2014                       <B>runspin(1)</B>
+</PRE>
+</body>
